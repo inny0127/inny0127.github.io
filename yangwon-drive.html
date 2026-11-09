@@ -7,7 +7,8 @@
 #app{display:flex;flex-direction:column;height:100%}
 #pano{flex:1;min-height:0;position:relative;background:#222}
 #pano .pv{position:absolute;left:0;top:0;right:0;bottom:0;z-index:1}
-#pano .pi{width:100%;height:100%}
+#pano .pi{width:100%;height:100%;background:#000}
+#pano .pv{background:#000}
 #mini{position:absolute;right:8px;top:8px;width:38%;max-width:220px;aspect-ratio:1;border:2px solid #fff;border-radius:10px;overflow:hidden;z-index:50}
 #hud{z-index:60!important;position:absolute;left:8px;top:8px;z-index:50;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;font-size:13px;line-height:1.5}
 #hud b{font-size:15px}
@@ -92,22 +93,24 @@ function anim(ms,f){return new Promise(res=>{const t0=performance.now();const st
 function ui(i){const ll=LL(i);car.setPosition(ll);map.setCenter(ll);$('seek').value=i;
  const [n,nx]=curName(i);const left=((cum[P.length-1]-cum[i])/1000).toFixed(1);
  $('hud').innerHTML='<b>'+n+'</b>'+(nx?'<br>다음: '+nx[0]+' ('+Math.round(cum[nx[1]]-cum[i])+'m)':'<br>도착')+'<br>남은 거리 '+left+'km';}
-async function go(i,fade=true){const my=++tok;idx=Math.max(0,Math.min(P.length-1,i));ui(idx);
+let creepOn=false;
+function creep(A,from,to,ms){creepOn=true;const t0=performance.now(),p0=A.getPov();const st=n=>{if(!creepOn)return;const k=Math.min(1,(n-t0)/ms);A.setPov({pan:p0.pan,tilt:p0.tilt,fov:from+(to-from)*k});if(k<1)requestAnimationFrame(st)};requestAnimationFrame(st)}
+async function go(i,fade=true){const my=++tok;creepOn=false;idx=Math.max(0,Math.min(P.length-1,i));ui(idx);
  const A=panos[cur],B=panos[1-cur],eA=$(cur?'wb':'wa'),eB=$(cur?'wa':'wb');
  const povA=A.getPov(),h=follow?heading(idx):povA.pan;
  B.setPov({pan:h,tilt:follow?0:povA.tilt,fov:100});B.setPosition(LL(idx));
- const ok=await waitPano(B,1200);if(my!==tok)return;
+ if(fade&&follow)creep(A,povA.fov,Math.max(80,povA.fov-10),1400); // 기다리는 동안 앞으로 천천히 다가가는 느낌
+ const ok=await waitPano(B,1500);if(my!==tok)return;
  const idB=pid(B);
- if(!ok||(idB&&idB===curId)){ // 같은 장면: 회전만 부드럽게
-  const p0=A.getPov();await anim(350,e=>A.setPov({pan:angLerp(p0.pan,h,e),tilt:p0.tilt,fov:p0.fov}));return}
- await sleep(180);if(my!==tok)return;
- const D=fade?Math.max(220,520/speeds[si]):150,p0=A.getPov();
+ if(!ok||(idB&&idB===curId)){creepOn=false;const p0=A.getPov();await anim(300,e=>A.setPov({pan:angLerp(p0.pan,h,e),tilt:p0.tilt,fov:p0.fov+(100-p0.fov)*e}));return}
+ await sleep(fade?550:250);if(my!==tok)return; // 사진 타일이 다 그려질 때까지 대기(흰 화면 방지)
+ creepOn=false;const D=fade?Math.max(260,600/Math.sqrt(speeds[si])):150,p0=A.getPov();
  eB.style.zIndex=2;eA.style.zIndex=1;
- await anim(D,e=>{eB.style.opacity=e;A.setPov({pan:angLerp(p0.pan,h,e),tilt:p0.tilt,fov:100-22*e})});
+ await anim(D,e=>{eB.style.opacity=e;A.setPov({pan:angLerp(p0.pan,h,e),tilt:p0.tilt,fov:p0.fov-14*e})});
  eA.style.opacity=0;A.setPov({pan:h,tilt:0,fov:100});cur=1-cur;curId=idB;}
-function stepPts(){return speeds[si]>=1?speeds[si]:1}
+function stepPts(){return Math.max(1,Math.round(2*speeds[si]))}
 async function loop(){while(playing){if(idx>=P.length-1){toggle(false);break}
- const t0=performance.now();await go(idx+stepPts());const wait=(speeds[si]<1?900:420/speeds[si])-(performance.now()-t0);if(wait>0)await sleep(wait)}}
+ await go(Math.min(P.length-1,idx+stepPts()));if(speeds[si]<1)await sleep(600)}}
 function toggle(v){playing=v;$('play').textContent=v?'⏸ 정지':'▶ 출발';if(v)loop();}
 function init(){
  $('setup').style.display='none';
