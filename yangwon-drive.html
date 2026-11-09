@@ -74,7 +74,7 @@ let ovs=[];function drawRoute(){ovs.forEach(o=>o.setMap(null));ovs=[];const ll=i
  $('seek').max=P.length-1;$('wps').innerHTML='';const b0=document.createElement('button');b0.className='s';b0.id='pick';b0.textContent='📍 출발점 지정';b0.onclick=startPick;$('wps').appendChild(b0);
  M.forEach(([nm,ix],k)=>{const b=document.createElement('button');b.className='s';b.textContent=(k+1)+'. '+nm;b.onclick=()=>go(ix);$('wps').appendChild(b)});}
 let picking=false;function startPick(){picking=!picking;toggle(false);$('mini').classList.toggle('big',picking);$('pick').textContent=picking?'취소':'📍 출발점 지정';naver.maps.Event.trigger(map,'resize');if(picking){$('hud').innerHTML='<b>지도를 확대해서 정류장 위치를 탭하세요</b>';map.setZoom(17)}}
-async function setStart(lat,lng){$('hud').innerHTML='<b>경로 다시 계산 중…</b>';try{await reroute([lat,lng]);try{localStorage.setItem('startPt_v2',JSON.stringify([lat,lng]))}catch(e){}drawRoute();go(0,false);$('hud').innerHTML+='<br><small>출발점 '+lat.toFixed(5)+', '+lng.toFixed(5)+'</small>'}catch(e){$('hud').innerHTML='<b>'+e.message+'</b>'}}
+async function setStart(lat,lng){$('hud').innerHTML='<b>경로 다시 계산 중…</b>';try{await reroute([lat,lng]);try{localStorage.setItem('startPt_v2',JSON.stringify([lat,lng]))}catch(e){}drawRoute();go(0);$('hud').innerHTML+='<br><small>출발점 '+lat.toFixed(5)+', '+lng.toFixed(5)+'</small>'}catch(e){$('hud').innerHTML='<b>'+e.message+'</b>'}}
 $('go').onclick=()=>{const k=$('key').value.trim();if(!k){$('err').textContent='키를 입력하세요';return}
  try{localStorage.setItem('ncpKey',k)}catch(e){}
  window.navermap_authFailure=()=>{$('setup').style.display='block';$('err').textContent='인증 실패: 키 또는 Web 서비스 URL 등록(위 주소)을 확인하세요.'};
@@ -93,24 +93,18 @@ function anim(ms,f){return new Promise(res=>{const t0=performance.now();const st
 function ui(i){const ll=LL(i);car.setPosition(ll);map.setCenter(ll);$('seek').value=i;
  const [n,nx]=curName(i);const left=((cum[P.length-1]-cum[i])/1000).toFixed(1);
  $('hud').innerHTML='<b>'+n+'</b>'+(nx?'<br>다음: '+nx[0]+' ('+Math.round(cum[nx[1]]-cum[i])+'m)':'<br>도착')+'<br>남은 거리 '+left+'km';}
-let creepOn=false;
-function creep(A,from,to,ms){creepOn=true;const t0=performance.now(),p0=A.getPov();const st=n=>{if(!creepOn)return;const k=Math.min(1,(n-t0)/ms);A.setPov({pan:p0.pan,tilt:p0.tilt,fov:from+(to-from)*k});if(k<1)requestAnimationFrame(st)};requestAnimationFrame(st)}
-async function go(i,fade=true){const my=++tok;creepOn=false;idx=Math.max(0,Math.min(P.length-1,i));ui(idx);
+async function go(i){const my=++tok;idx=Math.max(0,Math.min(P.length-1,i));ui(idx);
  const A=panos[cur],B=panos[1-cur],eA=$(cur?'wb':'wa'),eB=$(cur?'wa':'wb');
  const povA=A.getPov(),h=follow?heading(idx):povA.pan;
  B.setPov({pan:h,tilt:follow?0:povA.tilt,fov:100});B.setPosition(LL(idx));
- if(fade&&follow)creep(A,povA.fov,Math.max(80,povA.fov-10),1400); // 기다리는 동안 앞으로 천천히 다가가는 느낌
  const ok=await waitPano(B,1500);if(my!==tok)return;
  const idB=pid(B);
- if(!ok||(idB&&idB===curId)){creepOn=false;const p0=A.getPov();await anim(300,e=>A.setPov({pan:angLerp(p0.pan,h,e),tilt:p0.tilt,fov:p0.fov+(100-p0.fov)*e}));return}
- await sleep(fade?550:250);if(my!==tok)return; // 사진 타일이 다 그려질 때까지 대기(흰 화면 방지)
- creepOn=false;const D=fade?Math.max(260,600/Math.sqrt(speeds[si])):150,p0=A.getPov();
- eB.style.zIndex=2;eA.style.zIndex=1;
- await anim(D,e=>{eB.style.opacity=e;A.setPov({pan:angLerp(p0.pan,h,e),tilt:p0.tilt,fov:p0.fov-14*e})});
- eA.style.opacity=0;A.setPov({pan:h,tilt:0,fov:100});cur=1-cur;curId=idB;}
-function stepPts(){return Math.max(1,Math.round(2*speeds[si]))}
+ if(!ok||(idB&&idB===curId)){A.setPov({pan:h,tilt:follow?0:povA.tilt,fov:povA.fov});return}
+ await sleep(400);if(my!==tok)return; // 뒤에서 사진이 다 그려진 다음 바꿈(번쩍임 방지)
+ eB.style.opacity=1;eB.style.zIndex=2;eA.style.opacity=0;eA.style.zIndex=1;cur=1-cur;curId=idB;}
+function stepPts(){return speeds[si]>=1?speeds[si]:1}
 async function loop(){while(playing){if(idx>=P.length-1){toggle(false);break}
- await go(Math.min(P.length-1,idx+stepPts()));if(speeds[si]<1)await sleep(600)}}
+ const t0=performance.now();await go(Math.min(P.length-1,idx+stepPts()));const w=(speeds[si]<1?1200:600/speeds[si])-(performance.now()-t0);if(w>0)await sleep(w)}}
 function toggle(v){playing=v;$('play').textContent=v?'⏸ 정지':'▶ 출발';if(v)loop();}
 function init(){
  $('setup').style.display='none';
@@ -128,6 +122,6 @@ $('play').onclick=()=>toggle(!playing);
 $('fwd').onclick=()=>go(idx+1);$('back').onclick=()=>go(idx-1);
 $('spd').onclick=()=>{si=(si+1)%speeds.length;$('spd').textContent='속도 '+speeds[si]+'x'};
 $('follow').onclick=()=>{follow=!follow;$('follow').classList.toggle('on',follow)};
-let seekT;$('seek').oninput=e=>{clearTimeout(seekT);const v=+e.target.value;ui(v);seekT=setTimeout(()=>go(v,false),250)};
+let seekT;$('seek').oninput=e=>{clearTimeout(seekT);const v=+e.target.value;ui(v);seekT=setTimeout(()=>go(v),250)};
 document.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='w')go(idx+1);else if(e.key==='ArrowDown'||e.key==='s')go(idx-1);else if(e.key===' '){e.preventDefault();toggle(!playing)}});
 </script></body></html>
