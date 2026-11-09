@@ -6,9 +6,10 @@
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:#111;color:#eee;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
 #app{display:flex;flex-direction:column;height:100%}
 #pano{flex:1;min-height:0;position:relative;background:#222}
-#pano .pv{position:absolute;inset:0}
+#pano .pv{position:absolute;left:0;top:0;right:0;bottom:0;z-index:1}
+#pano .pi{width:100%;height:100%}
 #mini{position:absolute;right:8px;top:8px;width:38%;max-width:220px;aspect-ratio:1;border:2px solid #fff;border-radius:10px;overflow:hidden;z-index:50}
-#hud{position:absolute;left:8px;top:8px;z-index:50;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;font-size:13px;line-height:1.5}
+#hud{z-index:60!important;position:absolute;left:8px;top:8px;z-index:50;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;font-size:13px;line-height:1.5}
 #hud b{font-size:15px}
 #ctl{padding:10px;background:#1b1b1b;display:flex;flex-direction:column;gap:8px}
 .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -38,7 +39,7 @@ small{color:#aaa}
 <small>키는 이 브라우저에만 저장돼요.</small>
 </div>
 <div id="app">
- <div id="pano"><div id="pa" class="pv"></div><div id="pb" class="pv"></div><div id="hud"></div><div id="mini"></div></div>
+ <div id="pano"><div id="wa" class="pv"><div id="pa" class="pi"></div></div><div id="wb" class="pv"><div id="pb" class="pi"></div></div><div id="hud"></div><div id="mini"></div></div>
  <div id="ctl">
   <div class="row"><button id="play">▶ 출발</button><button class="s" id="back">◀ 한칸</button><button class="s" id="fwd">한칸 ▶</button>
    <button class="s" id="spd">속도 1x</button><button class="s on" id="follow">진행방향 보기</button></div>
@@ -92,7 +93,7 @@ function ui(i){const ll=LL(i);car.setPosition(ll);map.setCenter(ll);$('seek').va
  const [n,nx]=curName(i);const left=((cum[P.length-1]-cum[i])/1000).toFixed(1);
  $('hud').innerHTML='<b>'+n+'</b>'+(nx?'<br>다음: '+nx[0]+' ('+Math.round(cum[nx[1]]-cum[i])+'m)':'<br>도착')+'<br>남은 거리 '+left+'km';}
 async function go(i,fade=true){const my=++tok;idx=Math.max(0,Math.min(P.length-1,i));ui(idx);
- const A=panos[cur],B=panos[1-cur],eA=$(cur?'pb':'pa'),eB=$(cur?'pa':'pb');
+ const A=panos[cur],B=panos[1-cur],eA=$(cur?'wb':'wa'),eB=$(cur?'wa':'wb');
  const povA=A.getPov(),h=follow?heading(idx):povA.pan;
  B.setPov({pan:h,tilt:follow?0:povA.tilt,fov:100});B.setPosition(LL(idx));
  const ok=await waitPano(B,1200);if(my!==tok)return;
@@ -112,7 +113,7 @@ function init(){
  $('setup').style.display='none';
  const opt=i=>({position:LL(i),pov:{pan:heading(i),tilt:0,fov:100},aroundControl:false,flightSpot:false,zoomControl:false});
  panos=[new naver.maps.Panorama('pa',opt(0)),new naver.maps.Panorama('pb',opt(0))];
- $('pb').style.opacity=0;
+ $('wb').style.opacity=0;$('wa').style.zIndex=2;
  naver.maps.Event.once(panos[0],'pano_changed',()=>{curId=pid(panos[0])});
  map=new naver.maps.Map('mini',{center:LL(0),zoom:15,mapDataControl:false,scaleControl:false,logoControl:true});
  naver.maps.Event.addListener(map,'click',e=>{if(!picking)return;startPick();setStart(e.coord.lat(),e.coord.lng())});
