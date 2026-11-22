@@ -1,0 +1,60 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+:root {
+  --bg: #fdfdfc;
+  --fg: #222;
+  --sub: #6b6b6b;
+  --rule: #e6e6e3;
+  --link: #1f5fbf;
+  --code-bg: #f3f3f1;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #161616; --fg: #e4e4e4; --sub: #9a9a9a; --rule: #2e2e2e; --link: #7fb0ff; --code-bg: #222; color-scheme: dark; }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-size: 16.5px;
+  line-height: 1.8;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; }
+nav.top { font-size: 14px; color: var(--sub); margin-bottom: 40px; }
+nav.top a { color: var(--sub); text-decoration: none; }
+nav.top a:hover { color: var(--fg); }
+
+h1 { font-size: 28px; line-height: 1.35; margin: 0 0 8px; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 20px; margin: 48px 0 12px; font-weight: 700; }
+h3 { font-size: 17px; margin: 28px 0 8px; font-weight: 600; }
+p { margin: 0 0 16px; }
+.date { color: var(--sub); font-size: 14px; margin-bottom: 32px; }
+a { color: var(--link); }
+ul, ol { padding-left: 22px; margin: 0 0 16px; }
+li { margin-bottom: 4px; }
+code { font-family: "D2Coding", ui-monospace, Consolas, monospace; font-size: 0.9em; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+
+figure { margin: 24px 0 28px; }
+figure video, figure img { width: 100%; display: block; background: #000; border-radius: 4px; }
+figcaption { font-size: 14px; color: var(--sub); margin-top: 8px; line-height: 1.6; }
+
+.table-wrap { overflow-x: auto; margin: 8px 0 20px; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.6; }
+th, td { border-bottom: 1px solid var(--rule); padding: 7px 10px 7px 0; text-align: left; vertical-align: top; }
+th { color: var(--sub); font-weight: 500; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+hr { border: 0; border-top: 1px solid var(--rule); margin: 48px 0 24px; }
+.small { font-size: 14px; color: var(--sub); }
+
+.projects { list-style: none; padding: 0; margin: 24px 0 0; }
+.projects li { padding: 18px 0; border-top: 1px solid var(--rule); margin: 0; }
+.projects li:last-child { border-bottom: 1px solid var(--rule); }
+.projects a.t { font-size: 18px; font-weight: 600; text-decoration: none; color: var(--fg); }
+.projects a.t:hover { text-decoration: underline; }
+.projects p { margin: 4px 0 0; color: var(--sub); font-size: 15px; }

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>catmotion</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="top"><a href="../">← inny0127</a></nav>
+
+  <h1>catmotion: 물리로 움직이는 고양이</h1>
+  <p class="date">2026년 11월 · 진행 중</p>
+
+  <p>고양이 영상에서 동작을 뽑아 3D로 옮기고, 그 동작을 물리 시뮬레이션 속 고양이가 실제로 해내게 만드는 게 목표다. 애니메이션처럼 관절 각도를 그냥 재생하는 게 아니라, 모터 64개를 가진 몸이 중력과 마찰 속에서 넘어지지 않고 움직여야 한다. 지금까지 만든 것을 2분 정도로 묶으면 아래 영상이다.</p>
+
+  <figure>
+    <video src="media/overview.mp4" controls preload="metadata" playsinline></video>
+    <figcaption>렌더링, 문장 조작, 레이저 쫓기, 실제 영상에서 가져온 동작 순서.</figcaption>
+  </figure>
+
+  <h2>몸과 걷기</h2>
+  <p>MuJoCo로 고양이 몸을 만들었다. 척추, 목, 꼬리, 네 다리를 합쳐 관절 모터가 64개다. 동작은 걷기, 빠르게 걷기, 회전, 앉기, 엎드리기, 웅크리기, 둘러보기 같은 기본 동작을 섞어 1,606개 클립으로 만들었고, 정책 하나가 이 클립들을 모두 따라 하도록 PPO로 학습했다. GPU에서 환경 4,096개를 동시에 돌렸다.</p>
+  <p>학습에 안 쓴 300개 동작으로 평가하면 96 %를 넘어지지 않고 끝까지 따라 한다. 처음에는 잘 걷는 것처럼 보여도 자세히 보면 발이 미끄러지거나 머리가 떨리는 경우가 많아서, 발 미끄러짐과 머리 흔들림에 벌점을 주고 손으로 영상을 보며 판정하는 과정을 여러 번 거쳤다.</p>
+
+  <h2>겉모습</h2>
+  <p>시뮬레이션 속 몸은 캡슐 덩어리라 고양이처럼 보이지 않는다. 공개된 고양이 3D 모델(CC BY)을 물리 몸에 입혔다. 처음에는 메시의 점을 가장 가까운 몸 부위에 그대로 붙였더니, 모델과 물리 몸의 비율이 달라서 걸을 때 옆구리가 찢어지고 다리가 뻣뻣했다. 모델 안쪽에 물리 몸의 관절 위치를 새로 잡고 회전만 옮기는 방식으로 바꾼 뒤, 옆구리 주름은 Delta Mush로 펴고 발이 바닥에 붙도록 보정했다.</p>
+  <figure>
+    <video src="media/render.mp4" controls preload="metadata" playsinline></video>
+    <figcaption>물리 시뮬레이션 결과에 고양이 모델을 입힌 것. Blender Eevee.</figcaption>
+  </figure>
+
+  <h2>문장으로 움직이기</h2>
+  <p>"꼬리를 세우고 천천히 왼쪽으로 걷는다" 같은 문장으로 움직이게 하고 싶었다. 동작 구간을 32차원 토큰으로 압축하는 VAE를 만들고, 다국어 문장 인코더로 문장을 속도·자세·고개·꼬리 같은 속성으로 읽은 뒤 맞는 토큰을 찾는다. 물리 쪽에는 토큰을 입력으로 받는 정책을 따로 두었는데, 앞의 추종 정책을 선생님으로 두고 증류(DAgger)해서 만들었다. NVIDIA의 SONIC에서 아이디어를 가져왔다.</p>
+  <p>시험한 문장 10개는 모두 8초 동안 넘어지지 않았다. 다만 문장을 속성으로 읽는 정확도가 아직 59 % 정도라 엉뚱한 동작이 나올 때가 있다.</p>
+  <figure>
+    <video src="media/text_walk_left.webm" controls preload="metadata" playsinline></video>
+    <figcaption>"고양이가 꼬리를 세우고 천천히 왼쪽으로 걷는다". 왼쪽은 문장에서 만든 목표 동작, 오른쪽은 물리 결과.</figcaption>
+  </figure>
+  <figure>
+    <video src="media/text_stalk_right.webm" controls preload="metadata" playsinline></video>
+    <figcaption>"고양이가 몸을 낮추고 살금살금 오른쪽으로 돈다".</figcaption>
+  </figure>
+
+  <h2>레이저 쫓기</h2>
+  <p>정책을 다시 학습하지 않고 위에 판단하는 층만 얹었다. 0.5초마다 레이저 점과의 거리와 방향을 보고, 멀면 빠르게 걷고, 옆에 있으면 돌아서 다가가고, 점이 멈추면 몸을 낮춰 노린다. 24초 동안 넘어지지 않았고 시간의 절반 이상을 점 0.5 m 안에 있었다.</p>
+  <figure>
+    <video src="media/laser.webm" controls preload="metadata" playsinline></video>
+  </figure>
+
+  <h2>실제 고양이 영상에서 동작 가져오기</h2>
+  <p>위키미디어 공용의 고양이 영상에서 2D 키포인트를 뽑고, 그걸 3D 동작으로 바꿔 물리 고양이가 따라 하게 했다. 프레임마다 관절을 따로 맞추면 2D로는 잘 맞는데, 떨리고 발이 미끄러지고 가끔 몸이 뒤집혀서 물리로 따라 할 수가 없었다. 앞에서 만든 동작 VAE가 만들 수 있는 동작 안에서만 맞추도록 바꾸자, 12개 영상 모두 물리 고양이가 끝까지 따라 했다. 프레임별로 맞춘 쪽은 12개 중 하나도 못 따라 했다.</p>
+  <p>중간에 이상하게 안 맞던 원인은 키포인트 이름이었다. 검출기(SuperAnimal)와 내 시뮬레이터가 등과 목의 양 끝 이름을 반대로 쓰고 있었다. 실제 영상에서 각 점이 코와 꼬리 사이 어디쯤 있는지 재 보고 알았고, 고치니 2D 오차가 16 % 줄었다.</p>
+  <figure>
+    <video src="media/video_to_3d.mp4" controls preload="metadata" playsinline></video>
+    <figcaption>왼쪽: 영상과 키포인트(초록), 복원한 골격(빨강). 오른쪽: 그 동작을 따라 하는 물리 고양이.</figcaption>
+  </figure>
+
+  <h2>다음 행동 예측</h2>
+  <p>동작 토큰을 언어 모델의 단어처럼 다루면, 지금까지의 움직임을 보고 다음을 예측할 수 있다. 0.27초 단위 토큰 위에서 다음 토큰의 확률분포를 내는 Transformer를 만들었고, 명령(앉아, 빨리 등)과 목표 위치를 선택적으로 넣을 수 있게 했다. 학습에 안 쓴 클립에서 1초 뒤 자세를 98 % 맞혔다. 지금 자세가 그대로 간다고 가정했을 때는 88 %였다.</p>
+  <p>확률을 내니까 이상 탐지도 된다. 한쪽 앞다리를 굳혀 절뚝이게 만든 걸음은 학습 때 한 번도 보여준 적이 없는데, 모델이 얼마나 놀라는지만으로 정상 걸음과 구분했다(AUROC 0.82). 처음에는 "앉아" 같은 명령을 무시했는데, 앉기 데이터가 전체의 1 %뿐이어서였다. 명령이 있을 때와 없을 때 예측 차이를 키우는 가이던스를 넣자 따랐다.</p>
+  <figure>
+    <video src="media/world_model.webm" controls preload="metadata" playsinline></video>
+    <figcaption>명령 순서 "앉기 → 천천히 걷기 → 빠르게 → 엎드려 두리번"을 모델이 만들고, 토큰 정책이 물리로 수행. 마지막 명령은 엎드리기 대신 웅크리기로 나왔다.</figcaption>
+  </figure>
+
+  <h2>지금 막혀 있는 것</h2>
+  <p>원래 목표는 라이브러리에 없는 동작을 영상에서 배우는 것이다. YouTube에서 CC BY 라이선스만 확인해 고양이 영상 226개를 모았고, 키포인트를 30 fps로 뽑아 광류로 다듬어 떨림을 1/5로 줄였다. 그런데 노는 동작이나 앞발 장난은 동작 VAE가 표현하지 못해서, 복원에 보정항을 더하면 2D로는 영상과 잘 맞지만 물리 고양이가 따라가지 못했다.</p>
+  <p>이걸 확인하다가 큰 버그도 하나 찾았다. 정책이 자기가 직접 만든 물리 결과조차 다시 따라 하지 못하길래 추적해 보니, 시뮬레이터가 "넘어져도 끝내지 말라"는 설정을 무시하고 몸이 기준에서 벗어날 때마다 몰래 처음 자세로 되돌리고 있었다. 그래서 일부 물리 검증 수치가 실제보다 좋게 나와 있었다. 고친 뒤 다시 재 보니 위의 12개 영상 결과는 그대로였고, YouTube 쪽 결과는 무너졌다.</p>
+  <p>지금은 방향을 바꿨다. 물리로 따라 할 수 있는 복원부터 학습시키고, 정책이 해낸 물리 결과를 다시 학습 데이터로 쓰면서 영상과 얼마나 맞는지로 고르는 과정을 반복하고 있다. 동작 VAE도 실제 고양이 데이터로 넓히는 중이다. 라이브러리 동작에는 척추를 옆으로 굽히는 움직임이 아예 없어서, 그 부분부터 채워야 한다.</p>
+
+  <hr>
+  <p class="small">
+    사용한 것: MuJoCo (MuJoCo Warp, GPU), PyTorch, Blender, OpenCV, DeepLabCut SuperAnimal (연구용 라이선스), sentence-transformers.<br>
+    고양이 3D 모델: "Cat v1.0" by rhcreations, CC BY 4.0. 영상: Wikimedia Commons, YouTube Creative Commons Attribution 영상(출처 목록 보관).<br>
+    노트북 RTX 4060 한 대로 돌렸고, 코드 작성과 실험의 많은 부분을 AI 코딩 에이전트와 함께 했다.
+  </p>
+</div>
+</body>
+</html>
