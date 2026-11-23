@@ -58,3 +58,4 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 48px 0 24px; }
 .projects a.t { font-size: 18px; font-weight: 600; text-decoration: none; color: var(--fg); }
 .projects a.t:hover { text-decoration: underline; }
 .projects p { margin: 4px 0 0; color: var(--sub); font-size: 15px; }
+blockquote { margin: 16px 0 20px; padding: 2px 0 2px 16px; border-left: 3px solid var(--rule); color: var(--sub); font-style: italic; }
