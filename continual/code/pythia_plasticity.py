@@ -68,7 +68,8 @@ def exact(model, tok, items, bs=64):
         ids = torch.full((len(enc), L), tok.eos_token_id); att = torch.zeros_like(ids)
         for k, (p, a) in enumerate(enc):
             s = p + a; ids[k, :len(s)] = torch.tensor(s); att[k, :len(s)] = 1
-        logits = model(input_ids=ids, attention_mask=att).logits
+        dv = next(model.parameters()).device
+        logits = model(input_ids=ids.to(dv), attention_mask=att.to(dv)).logits.cpu()
         pred = logits.argmax(-1)
         for k, (p, a) in enumerate(enc):
             ok += int(all(pred[k, len(p) - 1 + j] == a[j] for j in range(len(a))))
