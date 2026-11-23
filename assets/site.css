@@ -59,3 +59,14 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 48px 0 24px; }
 .projects a.t:hover { text-decoration: underline; }
 .projects p { margin: 4px 0 0; color: var(--sub); font-size: 15px; }
 blockquote { margin: 16px 0 20px; padding: 2px 0 2px 16px; border-left: 3px solid var(--rule); color: var(--sub); font-style: italic; }
+@media print {
+  :root { --bg: #fff; --fg: #111; --sub: #555; --rule: #ddd; --link: #1f5fbf; }
+  body { font-size: 11pt; line-height: 1.65; }
+  .wrap { max-width: none; padding: 0; }
+  nav.top { display: none; }
+  h2 { break-after: avoid; }
+  figure, table, blockquote { break-inside: avoid; }
+  figure video, figure img { max-height: 9cm; object-fit: contain; background: #fff; }
+}
+.print-only { display: none; }
+@media print { figure video { display: none; } .print-only { display: block; } }
