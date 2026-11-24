@@ -105,6 +105,7 @@ def main():
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--threads", type=int, default=14)
     ap.add_argument("--out", default="results.jsonl")
+    ap.add_argument("--sam", type=float, default=0.0, help="11-24: SAM radius rho (0 = plain AdamW)")
     a = ap.parse_args()
     torch.set_num_threads(a.threads)
     dev = torch.device(a.device)
@@ -117,11 +118,11 @@ def main():
     done = set()
     if Path(a.out).exists():
         for l in open(a.out):
-            r = json.loads(l); done.add((r["step"], r["lr"], r["seed"]))
+            r = json.loads(l); done.add((r["step"], r["lr"], r["seed"], r.get("sam", 0.0)))
     for step in [int(s) for s in a.steps.split(",")]:
         for seed in [int(s) for s in a.seeds.split(",")]:
             for lr in [float(x) for x in a.lrs.split(",")]:
-                if (step, lr, seed) in done:
+                if (step, lr, seed, a.sam) in done:
                     continue
                 torch.manual_seed(seed); rng = random.Random(seed)
                 model = GPTNeoXForCausalLM.from_pretrained(a.model, revision=f"step{step}", torch_dtype=torch.float32).to(dev)
@@ -141,11 +142,21 @@ def main():
                 for t in range(1, a.train_steps + 1):
                     ids_, att, lab = (x.to(dev) for x in batch_of(tok, rng.sample(pool, a.bs)))
                     loss = model(input_ids=ids_, attention_mask=att, labels=lab).loss
-                    opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0); opt.step()
+                    opt.zero_grad(); loss.backward()
+                    if a.sam > 0:                                               # sharpness-aware: gradient at w + rho g/|g|
+                        ps = [p for p in model.parameters() if p.grad is not None]
+                        gn = torch.norm(torch.stack([p.grad.norm() for p in ps])) + 1e-12
+                        eps = [a.sam * p.grad / gn for p in ps]
+                        with torch.no_grad():
+                            for p, e in zip(ps, eps): p.add_(e)
+                        opt.zero_grad(); model(input_ids=ids_, attention_mask=att, labels=lab).loss.backward()
+                        with torch.no_grad():
+                            for p, e in zip(ps, eps): p.sub_(e)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0); opt.step()
                     if t % 25 == 0:
                         curve.append(ev(t))
                 model.eval()
-                fin = dict(step=step, tokens_b=step * 2.097152e-3, lr=lr, seed=seed, base_text=base_txt, final_text=text_loss(model, chunks),
+                fin = dict(step=step, tokens_b=step * 2.097152e-3, lr=lr, seed=seed, sam=a.sam, base_text=base_txt, final_text=text_loss(model, chunks),
                            curve=curve, secs=time.time() - t0)
                 with open(a.out, "a") as f:
                     f.write(json.dumps(fin) + "\n")
